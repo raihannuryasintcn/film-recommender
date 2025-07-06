@@ -2,6 +2,10 @@
 
 This project is a film recommender system that provides movie recommendations for users based on their past ratings. It uses a collaborative filtering approach with the SVD algorithm. The application is built with Flask and can be accessed through a web interface or a REST API.
 
+### SVD Model
+
+SVD Model can be obtained via Git LFS or Google Drive: https://drive.google.com/file/d/1UTEVAmg7RdorC231e2R4ITN7A5pezq2t/view?usp=sharing
+
 ## Features
 
 *   **User-based Recommendations:** Get movie recommendations for a specific user.
