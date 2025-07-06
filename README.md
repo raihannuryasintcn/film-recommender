@@ -4,7 +4,7 @@ This project is a film recommender system that provides movie recommendations fo
 
 ### SVD Model
 
-SVD Model can be obtained via Git LFS or Google Drive: https://drive.google.com/file/d/1UTEVAmg7RdorC231e2R4ITN7A5pezq2t/view?usp=sharing
+SVD Model can be obtained via Git LFS or Google Drive: https://drive.google.com/file/d/1UTEVAmg7RdorC231e2R4ITN7A5pezq2t/view?usp=sharing (700 MB)
 
 ## Features
 
