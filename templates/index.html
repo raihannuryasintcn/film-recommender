@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="bg-base-200">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendation System - SVD Model</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body >
+    <div class="container mx-auto px-4 py-8 ">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-primary mb-2">
+                <i class="fas fa-film mr-2"></i>
+                Movie Recommendation System
+            </h1>
+            <p class="text-base-content/70">Using SVD (Singular Value Decomposition) Model</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- User Selection Panel -->
+            <div class="lg:col-span-3">
+                <div class="card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <i class="fas fa-user mr-2"></i>
+                            Select User
+                        </h2>
+                        
+                        <!-- User ID Input -->
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text">User ID</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                id="userIdInput" 
+                                placeholder="Enter User ID" 
+                                class="input input-bordered w-full"
+                                min="1"
+                            />
+                        </div>
+
+                        <!-- Random User Button -->
+                        <button 
+                            id="randomUserBtn" 
+                            class="btn btn-secondary btn-outline w-full mt-2"
+                        >
+                            <i class="fas fa-random mr-2"></i>
+                            Random User
+                        </button>
+
+                        <!-- Get Recommendations Button -->
+                        <button 
+                            id="getRecommendationsBtn" 
+                            class="btn btn-primary w-full mt-4"
+                            disabled
+                        >
+                            <i class="fas fa-magic mr-2"></i>
+                            Get Recommendations
+                        </button>
+
+                        <!-- User Stats -->
+                        <div id="userStats" class="mt-4 hidden">
+                            <div class="divider">User Statistics</div>
+                            <div class="stats stats-vertical w-full">
+                                <div class="stat">
+                                    <div class="stat-title">Total Ratings</div>
+                                    <div class="stat-value text-primary" id="totalRatings">0</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-title">Average Rating</div>
+                                    <div class="stat-value text-secondary" id="avgRating">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="lg:col-span-9">
+                <!-- Loading -->
+                <div id="loading" class="hidden">
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body text-center">
+                            <span class="loading loading-spinner loading-lg text-primary"></span>
+                            <p class="mt-4">Getting recommendations with SVD...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="hidden">
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="errorText"></span>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div id="recommendations" class="hidden">
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title text-primary">
+                                <i class="fas fa-star mr-2"></i>
+                                Recommendations for User <span id="currentUserId"></span>
+                            </h2>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="table table-zebra w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Movie Title</th>
+                                            <th>Predicted Rating</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recommendationsList">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Watched Movies -->
+                <div id="topWatched" class="hidden mt-6">
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title text-secondary">
+                                <i class="fas fa-history mr-2"></i>
+                                Top Watched Movies
+                            </h2>
+                            <div class="overflow-x-auto">
+                                <table class="table table-zebra w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>Movie Title</th>
+                                            <th>Rating</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="topWatchedList">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let availableUsers = [];
+
+        // Load available users on page load
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                availableUsers = data.users;
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Get random user
+        document.getElementById('randomUserBtn').addEventListener('click', () => {
+            if (availableUsers.length > 0) {
+                const randomUser = availableUsers[Math.floor(Math.random() * availableUsers.length)];
+                document.getElementById('userIdInput').value = randomUser;
+                document.getElementById('getRecommendationsBtn').disabled = false;
+            }
+        });
+
+        // Enable/disable button based on input
+        document.getElementById('userIdInput').addEventListener('input', (e) => {
+            const userId = e.target.value;
+            document.getElementById('getRecommendationsBtn').disabled = !userId;
+        });
+
+        // Get recommendations
+        document.getElementById('getRecommendationsBtn').addEventListener('click', async () => {
+            const userId = document.getElementById('userIdInput').value;
+            
+            if (!userId) {
+                showError('Please enter a valid User ID');
+                return;
+            }
+
+            showLoading();
+            
+            try {
+                // Get user info and recommendations in parallel
+                const [userInfoResponse, recommendationsResponse] = await Promise.all([
+                    fetch(`/api/user/${userId}/info`),
+                    fetch(`/api/recommend/${userId}`)
+                ]);
+
+                if (!userInfoResponse.ok || !recommendationsResponse.ok) {
+                    throw new Error('User not found or error getting recommendations');
+                }
+
+                const userInfo = await userInfoResponse.json();
+                const recommendations = await recommendationsResponse.json();
+
+                displayResults(userInfo, recommendations);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+            }
+        });
+
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('recommendations').classList.add('hidden');
+            document.getElementById('topWatched').classList.add('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('errorMessage').classList.remove('hidden');
+            document.getElementById('recommendations').classList.add('hidden');
+            document.getElementById('topWatched').classList.add('hidden');
+        }
+
+        function displayResults(userInfo, recommendations) {
+            // Update user stats
+            document.getElementById('totalRatings').textContent = userInfo.totalRatings;
+            document.getElementById('avgRating').textContent = userInfo.avgRating;
+            document.getElementById('userStats').classList.remove('hidden');
+
+            // Display recommendations
+            document.getElementById('currentUserId').textContent = userInfo.userId;
+            
+            const recommendationsList = document.getElementById('recommendationsList');
+            recommendationsList.innerHTML = '';
+            
+            recommendations.recommendations.forEach((rec, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="font-bold">${index + 1}</td>
+                    <td>${rec.title}</td>
+                    <td>
+                        <div class="badge badge-primary badge-lg">
+                            ${rec.predicted_rating} ⭐
+                        </div>
+                    </td>
+                `;
+                recommendationsList.appendChild(row);
+            });
+
+            // Display top watched movies
+            const topWatchedList = document.getElementById('topWatchedList');
+            topWatchedList.innerHTML = '';
+            
+            userInfo.topWatched.forEach(movie => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${movie.title}</td>
+                    <td>
+                        <div class="badge badge-secondary">
+                            ${movie.rating} ⭐
+                        </div>
+                    </td>
+                `;
+                topWatchedList.appendChild(row);
+            });
+
+            // Show results
+            document.getElementById('recommendations').classList.remove('hidden');
+            document.getElementById('topWatched').classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
+
+        // Initialize
+        loadUsers();
+    </script>
+</body>
+</html>
